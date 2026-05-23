@@ -1,0 +1,22 @@
+table,column,dtype,description
+patients,patient_id,STRING,Unique patient identifier (PAT-XXXXXX)
+patients,mrn,STRING,Medical Record Number
+patients,age,INT,Age in years at time of dataset extraction
+patients,charlson_comorbidity_index,INT,Simplified CCI — higher = greater mortality risk
+patients,social_support_score,INT,1–10 score; low score = high readmission risk
+patients,num_prior_admissions,INT,Historical inpatient admissions count
+admissions,readmitted_within_30d,INT,TARGET: 1 = readmitted within 30 days of discharge
+admissions,length_of_stay_days,INT,LOS in days; key predictor
+admissions,icu_admitted,INT,1 = patient required ICU during this admission
+admissions,total_charges_usd,FLOAT,Total billed charges in USD
+vitals,news2_score,INT,National Early Warning Score 2 (0–20); ≥5 = high risk
+vitals,spo2_percent,FLOAT,Peripheral oxygen saturation (%)
+vitals,gcs_score,INT,Glasgow Coma Scale 3–15; <8 = severe impairment
+lab_results,flag,STRING,"H=High, L=Low, N=Normal vs reference range"
+lab_results,test_name,STRING,Full lab test name including units in parentheses
+ed_visits,triage_level,INT,1=Resuscitation … 5=Non-Urgent (CTAS/ESI scale)
+ed_visits,season,STRING,Season of arrival — useful for demand forecasting
+ed_visits,hour_of_arrival,INT,0–23; peak ED hours typically 10–20
+diagnoses,poa_flag,STRING,"Y=Present on admission, N=Hospital-acquired, W=Unknown"
+readmissions,days_to_readmission,INT,Days between discharge and readmission date
+readmissions,planned_readmission,INT,"1 = pre-planned (e.g., chemo); exclude from avoidable calc"

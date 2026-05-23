@@ -1,0 +1,549 @@
+Patient readmission risk scoring dashboard
+Filtering system for non-technical users
+7-day ED demand forecasting visualization
+KPI summary metrics
+Hospital analytics
+Clinical risk insights
+Downloadable prediction outputs
+Modular helper architecture
+Production-ready project structure
+SHAP explainability integration hooks
+Streamlit deployment instructions
+Requirements.txt
+
+
+
+# ============================================================
+# PREDICTIVE HEALTHCARE INTELLIGENT SYSTEM
+# STREAMLIT DASHBOARD (PRODUCTION READY)
+# ============================================================
+
+# ============================================================
+# IMPORT LIBRARIES
+# ============================================================
+
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+from helper.prediction import (
+    generate_readmission_predictions,
+    readmission_model
+)
+
+from helper.explainability import (
+    generate_shap_summary
+)
+
+from helper.forecasting import (
+    generate_ed_forecast
+)
+
+from helper.metrics import (
+    calculate_dashboard_kpis
+)
+
+# ============================================================
+# PAGE CONFIGURATION
+# ============================================================
+
+st.set_page_config(
+    page_title="Predictive Healthcare Intelligent System",
+    page_icon="🏥",
+    layout="wide"
+)
+
+# ============================================================
+# CACHE DATA LOADING
+# ============================================================
+
+@st.cache_data
+def load_dataset():
+
+    data_path = "datasets/processed/read_ml.csv"
+
+    return pd.read_csv(data_path)
+
+
+# ============================================================
+# LOAD DATA
+# ============================================================
+
+readmission_df = load_dataset()
+
+# ============================================================
+# GENERATE PREDICTIONS
+# ============================================================
+
+prediction_results_df = generate_readmission_predictions(
+    readmission_df
+)
+
+# ============================================================
+# DASHBOARD TITLE
+# ============================================================
+
+st.title("🏥 Predictive Healthcare Intelligent System")
+
+st.markdown(
+    """
+    AI-powered clinical decision support platform for:
+
+    - 30-Day Readmission Risk Prediction
+    - Emergency Department Demand Forecasting
+    - Healthcare Operational Intelligence
+    - Explainable Clinical AI
+    """
+)
+
+# ============================================================
+# SIDEBAR FILTERS
+# ============================================================
+
+st.sidebar.header("🔎 Dashboard Filters")
+
+# ============================================================
+# HOSPITAL FILTER
+# ============================================================
+
+selected_hospitals = st.sidebar.multiselect(
+    "Hospital",
+    options=sorted(
+        prediction_results_df["hospital"]
+        .dropna()
+        .unique()
+    ),
+    default=sorted(
+        prediction_results_df["hospital"]
+        .dropna()
+        .unique()
+    )
+)
+
+# ============================================================
+# ADMISSION TYPE FILTER
+# ============================================================
+
+selected_admission_types = st.sidebar.multiselect(
+    "Admission Type",
+    options=sorted(
+        prediction_results_df["admission_type"]
+        .dropna()
+        .unique()
+    ),
+    default=sorted(
+        prediction_results_df["admission_type"]
+        .dropna()
+        .unique()
+    )
+)
+
+# ============================================================
+# RISK CATEGORY FILTER
+# ============================================================
+
+selected_risk_categories = st.sidebar.multiselect(
+    "Risk Category",
+    options=sorted(
+        prediction_results_df["risk_category"]
+        .dropna()
+        .unique()
+    ),
+    default=sorted(
+        prediction_results_df["risk_category"]
+        .dropna()
+        .unique()
+    )
+)
+
+# ============================================================
+# PATIENT SEARCH
+# ============================================================
+
+patient_search = st.sidebar.text_input(
+    "Search Patient ID"
+)
+
+# ============================================================
+# APPLY FILTERS
+# ============================================================
+
+dashboard_df = prediction_results_df.copy()
+
+# Hospital filter
+dashboard_df = dashboard_df[
+    dashboard_df["hospital"]
+    .isin(selected_hospitals)
+]
+
+# Admission type filter
+dashboard_df = dashboard_df[
+    dashboard_df["admission_type"]
+    .isin(selected_admission_types)
+]
+
+# Risk category filter
+dashboard_df = dashboard_df[
+    dashboard_df["risk_category"]
+    .isin(selected_risk_categories)
+]
+
+# Patient ID search
+if patient_search:
+
+    dashboard_df = dashboard_df[
+        dashboard_df["patient_id"]
+        .astype(str)
+        .str.contains(patient_search)
+    ]
+
+# ============================================================
+# EMPTY FILTER PROTECTION
+# ============================================================
+
+if dashboard_df.empty:
+
+    st.warning(
+        "No patients match the selected filters."
+    )
+
+    st.stop()
+
+# ============================================================
+# FILTERED PATIENT COUNT
+# ============================================================
+
+st.sidebar.success(
+    f"Filtered Patients: {len(dashboard_df)}"
+)
+
+# ============================================================
+# TAB NAVIGATION
+# ============================================================
+
+main_tab1, main_tab2, main_tab3 = st.tabs([
+    "🏥 Readmission Dashboard",
+    "🚑 ED Forecasting",
+    "🧠 SHAP Explainability"
+])
+
+# ============================================================
+# TAB 1 — READMISSION DASHBOARD
+# ============================================================
+
+with main_tab1:
+
+    st.header("🏥 Readmission Risk Dashboard")
+
+    # ========================================================
+    # KPI SECTION
+    # ========================================================
+
+    st.subheader("📊 KPI Summary")
+
+    kpis = calculate_dashboard_kpis(
+        dashboard_df
+    )
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    with col1:
+
+        st.metric(
+            label="Readmission Rate",
+            value=f"{kpis['readmission_rate']}%"
+        )
+
+    with col2:
+
+        st.metric(
+            label="High Risk Patients",
+            value=kpis["high_risk_patients"]
+        )
+
+    with col3:
+
+        st.metric(
+            label="Average Risk Score",
+            value=f"{kpis['average_risk_score']}%"
+        )
+
+    with col4:
+
+        st.metric(
+            label="Average Length of Stay",
+            value=f"{kpis['average_length_of_stay']} Days"
+        )
+
+    # ========================================================
+    # PATIENT TABLE
+    # ========================================================
+
+    st.subheader("🧠 Patient Readmission Risk Scores")
+
+    risk_display_columns = [
+
+        "patient_id",
+
+        "hospital",
+
+        "admission_type",
+
+        "length_of_stay_days",
+
+        "prev_admissions",
+
+        "num_comorbidities",
+
+        "readmission_risk_score",
+
+        "risk_category"
+
+    ]
+
+    st.dataframe(
+        dashboard_df[risk_display_columns],
+        use_container_width=True,
+        height=500
+    )
+
+    # ========================================================
+    # RISK DISTRIBUTION CHART
+    # ========================================================
+
+    st.subheader("📈 Risk Distribution")
+
+    risk_chart = px.histogram(
+        dashboard_df,
+        x="readmission_risk_score",
+        color="risk_category",
+        nbins=30,
+        title="Readmission Risk Distribution",
+        hover_data=[
+            "patient_id",
+            "hospital",
+            "length_of_stay_days"
+        ]
+    )
+
+    st.plotly_chart(
+        risk_chart,
+        use_container_width=True
+    )
+
+    # ========================================================
+    # HOSPITAL ANALYTICS
+    # ========================================================
+
+    st.subheader("🏥 Hospital Analytics")
+
+    hospital_chart_df = (
+        dashboard_df
+        .groupby("hospital")[
+            "predicted_readmission"
+        ]
+        .mean()
+        .reset_index()
+    )
+
+    hospital_chart_df[
+        "predicted_readmission"
+    ] *= 100
+
+    hospital_chart = px.bar(
+        hospital_chart_df,
+        x="hospital",
+        y="predicted_readmission",
+        color="hospital",
+        title="Readmission Rate by Hospital",
+        labels={
+            "predicted_readmission":
+            "Readmission Rate (%)"
+        }
+    )
+
+    st.plotly_chart(
+        hospital_chart,
+        use_container_width=True
+    )
+
+    # ========================================================
+    # ADMISSION TYPE ANALYTICS
+    # ========================================================
+
+    st.subheader("🚑 Admission Type Analytics")
+
+    admission_chart_df = (
+        dashboard_df
+        .groupby("admission_type")[
+            "predicted_readmission"
+        ]
+        .mean()
+        .reset_index()
+    )
+
+    admission_chart_df[
+        "predicted_readmission"
+    ] *= 100
+
+    admission_chart = px.bar(
+        admission_chart_df,
+        x="admission_type",
+        y="predicted_readmission",
+        color="admission_type",
+        title="Readmission Rate by Admission Type",
+        labels={
+            "predicted_readmission":
+            "Readmission Rate (%)"
+        }
+    )
+
+    st.plotly_chart(
+        admission_chart,
+        use_container_width=True
+    )
+
+# ============================================================
+# TAB 2 — ED FORECASTING
+# ============================================================
+
+with main_tab2:
+
+    st.header("🚑 Emergency Department Forecasting")
+
+    st.markdown(
+        """
+        AI-powered 7-day Emergency Department
+        demand forecast for operational planning.
+        """
+    )
+
+    try:
+
+        # ====================================================
+        # GENERATE FORECAST
+        # ====================================================
+
+        forecast_results = generate_ed_forecast()
+
+        # ====================================================
+        # DISPLAY FORECAST TABLE
+        # ====================================================
+
+        st.subheader("📋 Forecast Results")
+
+        st.dataframe(
+            forecast_results,
+            use_container_width=True
+        )
+
+        # ====================================================
+        # FORECAST CHART
+        # ====================================================
+
+        forecast_chart = px.line(
+            forecast_results,
+            x="forecast_day",
+            y="predicted_ed_demand",
+            markers=True,
+            title="7-Day ED Demand Forecast"
+        )
+
+        st.plotly_chart(
+            forecast_chart,
+            use_container_width=True
+        )
+
+    except Exception as forecast_error:
+
+        st.error(
+            f"Forecasting Error: {forecast_error}"
+        )
+
+# ============================================================
+# TAB 3 — SHAP EXPLAINABILITY
+# ============================================================
+
+with main_tab3:
+
+    st.header("🧠 SHAP Explainability")
+
+    st.markdown(
+        """
+        Explainable AI analysis showing the most
+        influential clinical variables contributing
+        to readmission risk prediction.
+        """
+    )
+
+    try:
+
+        shap_fig = generate_shap_summary(
+            readmission_model,
+            dashboard_df.head(100)
+        )
+
+        st.pyplot(shap_fig)
+
+    except Exception as shap_error:
+
+        st.error(
+            f"SHAP Error: {shap_error}"
+        )
+
+# ============================================================
+# DOWNLOAD RESULTS
+# ============================================================
+
+st.markdown("---")
+
+st.subheader("⬇️ Download Dashboard Results")
+
+csv_export = dashboard_df.to_csv(
+    index=False
+).encode("utf-8")
+
+st.download_button(
+    label="Download Filtered Results",
+    data=csv_export,
+    file_name="readmission_dashboard_results.csv",
+    mime="text/csv"
+)
+
+# ============================================================
+# CLINICAL INSIGHTS PANEL
+# ============================================================
+
+st.markdown("---")
+
+st.info(
+    """
+    Clinical AI Insights:
+
+    - High-risk patients demonstrate increased
+      previous admissions and comorbidity burden.
+
+    - Longer hospital stay correlates strongly
+      with elevated readmission probability.
+
+    - Emergency admissions demonstrate higher
+      operational risk profiles.
+
+    - SHAP explainability identifies the most
+      influential patient-level risk factors.
+    """
+)
+
+# ============================================================
+# FOOTER
+# ============================================================
+
+st.markdown("---")
+
+st.caption(
+    """
+    Predictive Healthcare Intelligent System
+    | 
+    | Clinical AI Decision Support Dashboard
+    """
+)
